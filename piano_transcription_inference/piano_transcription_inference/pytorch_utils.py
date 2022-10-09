@@ -2,6 +2,7 @@ import os
 import numpy as np
 import time
 import torch
+from tqdm import tqdm
 
 from .utilities import pad_truncate_sequence
 
@@ -45,13 +46,9 @@ def forward(model, x, batch_size):
     pointer = 0
     total_segments = int(np.ceil(len(x) / batch_size))
     
-    while True:
-        print('Segment {} / {}'.format(pointer, total_segments))
-        if pointer >= len(x):
-            break
+    for pointer in tqdm(range(0, total_segments, batch_size)):
 
         batch_waveform = move_data_to_device(x[pointer : pointer + batch_size], device)
-        pointer += batch_size
 
         with torch.no_grad():
             model.eval()

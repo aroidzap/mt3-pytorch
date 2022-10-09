@@ -13,7 +13,7 @@ bash build_mt3_docker.sh
 
 Run MT3 transcription:
 ```bash
-docker run --rm -it --gpus all -v "${PWD}/input:/input" -v "${PWD}/output:/output" mt3
+docker run --rm -it --gpus all -v "${PWD}/input:/input" -v "${PWD}/output:/output" mt3-docker
 ```
 
 ### Run MT3 in Python

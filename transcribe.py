@@ -27,10 +27,12 @@ class PianoTranscriptionInferenceHandler:
         self.transcriptor.transcribe(audio, outpath)
 
 def run_inference(audio_path_list, output_directory, 
-    overwrite, remove_vocals, model_path):
+    overwrite, remove_vocals, model_path, enabled_models):
 
-    pt = PianoTranscriptionInferenceHandler(model_path)
-    mt3 = InferenceHandler(model_path)
+    if "mt3" in enabled_models:
+        mt3 = InferenceHandler(model_path)
+    if "pt" in enabled_models:
+        pt = PianoTranscriptionInferenceHandler(model_path)
     voc_rem = None
     if (remove_vocals):
         voc_rem = VocalRemover("vocal_remover/models/baseline.pth")
@@ -40,16 +42,22 @@ def run_inference(audio_path_list, output_directory,
         common_path = os.path.dirname(common_path)
 
     for audio_path in audio_path_list:
-        midi_path = os.path.join(output_directory, os.path.relpath(audio_path, common_path))
-        midi_path = f"{os.path.splitext(midi_path)[0]}.mid"
-        if not os.path.exists(os.path.dirname(midi_path)):
-            os.makedirs(os.path.dirname(midi_path))
+        output_path = os.path.join(output_directory, os.path.relpath(audio_path, common_path))
+        output_path = f"{os.path.splitext(output_path)[0]}"
+        if not os.path.exists(os.path.dirname(output_path)):
+            os.makedirs(os.path.dirname(output_path))
 
-        midi_path_mt3 = "{}.mt3.{}".format(*os.path.splitext(midi_path))
-        midi_path_pt = "{}.pt.{}".format(*os.path.splitext(midi_path))
+        midi_path_mt3 = f"{output_path}.mt3.mid"
+        midi_path_pt = f"{output_path}.pt.mid"
 
-        if (not overwrite and os.path.exists(midi_path_mt3) and os.path.exists(midi_path_pt)):
-            print(f'SKIPPING: "{midi_path}"')    
+        if (not overwrite 
+            and ("mt3" not in enabled_models or os.path.exists(midi_path_mt3)) 
+            and ("pt" not in enabled_models or os.path.exists(midi_path_pt))
+        ):
+            if ("mt3" in enabled_models):
+                print(f'SKIPPING: "{midi_path_mt3}"')
+            if ("pt" in enabled_models):
+                print(f'SKIPPING: "{midi_path_pt}"')
         else:
             try:
                 print(f'LOADING: "{audio_path}"')
@@ -57,18 +65,18 @@ def run_inference(audio_path_list, output_directory,
                 if (remove_vocals):
                     print(f'PREPROCESSING (removing vocals): "{audio_path}"')
                     audio, audio_sr = voc_rem.predict(audio, audio_sr)
-                if (not os.path.exists(midi_path_mt3)):
+                if ("mt3" in enabled_models and not os.path.exists(midi_path_mt3)):
                     print(f'TRANSCRIBING (mt3): "{audio_path}"')
                     mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
                     print(f'SAVED: "{midi_path_mt3}"')
-                if (not os.path.exists(midi_path_pt)):
+                if ("pt" in enabled_models and not os.path.exists(midi_path_pt)):
                     print(f'TRANSCRIBING (pt): "{audio_path}"')
                     pt.inference(audio, audio_sr, audio_path, outpath=midi_path_pt)
                     print(f'SAVED: "{midi_path_pt}"')
             except Exception:
                 print(traceback.format_exc())
                 print("")
-                print(f'FAILED: "{midi_path}"')
+                print(f'FAILED: "{output_path}"')
 
 def natural_sort(l): 
     convert = lambda text: int(text) if text.isdigit() else text.lower()
@@ -79,17 +87,25 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input", nargs='*', type=str, default=["/input"],
-        help='input audio folders')
+        help="Input audio folders")
+
     parser.add_argument("--output-folder", type=str, default="/output",
-        help='output midi folder')
-    parser.add_argument("--extensions", nargs='+', type=str,
-        default=["mp3", "wav", "flac"],
-        help='input audio extensions')
-    parser.add_argument("--disable-vocal-removal", action='store_true',
-        help='disable vocal removal preprocessing step')
+        help="Output midi folder")
+
+    parser.add_argument("--extensions", nargs='+', type=str, default=["mp3", "wav", "flac"],
+        help="Input audio extensions")
+
     parser.add_argument("--overwrite", action="store_true",
-        help='overwrite output files')
-    parser.add_argument("--model-path", type=str, default="./pretrained")
+        help="Overwrite output files")
+
+    parser.add_argument("--disable-vocal-removal", action='store_true',
+        help="Disable vocal removal preprocessing step")
+        
+    parser.add_argument("--model-path", type=str, default="./pretrained",
+        help="Pretrained models for transcription")
+
+    parser.add_argument("--enabled-models", type=str, default="mt3,pt",
+        help="Models used for transcription [mt3,pt] (comma separed)")
 
     args = parser.parse_args()
 
@@ -102,4 +118,5 @@ if __name__ == "__main__":
     run_inference(input_files, args.output_folder, 
         overwrite = args.overwrite, 
         remove_vocals = not args.disable_vocal_removal,
-        model_path = args.model_path),
+        model_path = args.model_path, 
+        enabled_models = [s.strip() for s in args.enabled_models.split(",")])

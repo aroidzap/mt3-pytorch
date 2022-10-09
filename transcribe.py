@@ -1,7 +1,3 @@
-from xmlrpc.client import boolean
-from inference import InferenceHandler
-from vocal_remover import VocalRemover
-
 import os
 import argparse
 import pathlib
@@ -10,12 +6,30 @@ import re
 import librosa
 import traceback
 
+from inference import InferenceHandler
+from vocal_remover import VocalRemover
+from piano_transcription_inference.piano_transcription_inference import PianoTranscription 
+from piano_transcription_inference.piano_transcription_inference import sample_rate as pt_sr
+
 warnings.filterwarnings('ignore', message='PySoundFile failed')
 warnings.filterwarnings('ignore', message='will be removed in v5 of Transformers')
+
+class PianoTranscriptionInferenceHandler:
+    def __init__(self, model_path):
+        self.transcriptor = PianoTranscription(checkpoint_path=
+            os.path.join(model_path, "note_F1=0.9677_pedal_F1=0.9186.pth"))
+
+    def inference(self, input_audio, audio_sr, audio_path, outpath=None):
+        audio = librosa.to_mono(librosa.resample(input_audio, orig_sr=audio_sr, target_sr=pt_sr))
+        if outpath is None:
+            filename = audio_path.split('/')[-1].split('.')[0]
+            outpath = f'./out/{filename}.mid'
+        self.transcriptor.transcribe(audio, outpath)
 
 def run_inference(audio_path_list, output_directory, 
     overwrite, remove_vocals, model_path):
 
+    pt = PianoTranscriptionInferenceHandler(model_path)
     mt3 = InferenceHandler(model_path)
     voc_rem = None
     if (remove_vocals):
@@ -31,7 +45,10 @@ def run_inference(audio_path_list, output_directory,
         if not os.path.exists(os.path.dirname(midi_path)):
             os.makedirs(os.path.dirname(midi_path))
 
-        if (not overwrite and os.path.exists(midi_path)):
+        midi_path_mt3 = "{}.mt3.{}".format(*os.path.splitext(midi_path))
+        midi_path_pt = "{}.pt.{}".format(*os.path.splitext(midi_path))
+
+        if (not overwrite and os.path.exists(midi_path_mt3) and os.path.exists(midi_path_pt)):
             print(f'SKIPPING: "{midi_path}"')    
         else:
             try:
@@ -40,9 +57,14 @@ def run_inference(audio_path_list, output_directory,
                 if (remove_vocals):
                     print(f'PREPROCESSING (removing vocals): "{audio_path}"')
                     audio, audio_sr = voc_rem.predict(audio, audio_sr)
-                print(f'TRANSCRIBING: "{audio_path}"')
-                mt3.inference(audio, audio_sr, audio_path, outpath=midi_path)
-                print(f'SAVED: "{midi_path}"')
+                if (not os.path.exists(midi_path_mt3)):
+                    print(f'TRANSCRIBING (mt3): "{audio_path}"')
+                    mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
+                    print(f'SAVED: "{midi_path_mt3}"')
+                if (not os.path.exists(midi_path_pt)):
+                    print(f'TRANSCRIBING (pt): "{audio_path}"')
+                    pt.inference(audio, audio_sr, audio_path, outpath=midi_path_pt)
+                    print(f'SAVED: "{midi_path_pt}"')
             except Exception:
                 print(traceback.format_exc())
                 print("")

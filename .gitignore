@@ -3,3 +3,4 @@ out/
 main.py
 results/
 output*/
+piano_transcription_inference/resources/*

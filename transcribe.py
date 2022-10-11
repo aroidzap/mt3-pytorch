@@ -27,7 +27,7 @@ class PianoTranscriptionInferenceHandler:
         self.transcriptor.transcribe(audio, outpath)
 
 def run_inference(audio_path_list, output_directory, 
-    overwrite, remove_vocals, model_path, enabled_models):
+    overwrite, remove_vocals, model_path, enabled_models, max_audio_length):
 
     if "mt3" in enabled_models:
         mt3 = InferenceHandler(model_path)
@@ -60,23 +60,28 @@ def run_inference(audio_path_list, output_directory,
                 print(f'SKIPPING: "{midi_path_pt}"')
         else:
             try:
-                print(f'LOADING: "{audio_path}"')
-                audio, audio_sr = librosa.load(audio_path)
-                if (remove_vocals):
-                    print(f'PREPROCESSING (removing vocals): "{audio_path}"')
-                    audio, audio_sr = voc_rem.predict(audio, audio_sr)
-                if ("mt3" in enabled_models and not os.path.exists(midi_path_mt3)):
-                    print(f'TRANSCRIBING (mt3): "{audio_path}"')
-                    mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
-                    print(f'SAVED: "{midi_path_mt3}"')
-                if ("pt" in enabled_models and not os.path.exists(midi_path_pt)):
-                    print(f'TRANSCRIBING (pt): "{audio_path}"')
-                    pt.inference(audio, audio_sr, audio_path, outpath=midi_path_pt)
-                    print(f'SAVED: "{midi_path_pt}"')
+                audio_length = librosa.get_duration(filename = audio_path)
+                if max_audio_length is not None and audio_length > max_audio_length:
+                    print(f'SKIPPING (too long): "{audio_path}"')
+                else:
+                    print(f'LOADING: "{audio_path}"')
+                    audio, audio_sr = librosa.load(audio_path)
+                    if (remove_vocals):
+                        print(f'PREPROCESSING (removing vocals): "{audio_path}"')
+                        audio, audio_sr = voc_rem.predict(audio, audio_sr)
+                    if ("mt3" in enabled_models and not os.path.exists(midi_path_mt3)):
+                        print(f'TRANSCRIBING (mt3): "{audio_path}"')
+                        mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
+                        print(f'SAVED: "{midi_path_mt3}"')
+                    if ("pt" in enabled_models and not os.path.exists(midi_path_pt)):
+                        print(f'TRANSCRIBING (pt): "{audio_path}"')
+                        pt.inference(audio, audio_sr, audio_path, outpath=midi_path_pt)
+                        print(f'SAVED: "{midi_path_pt}"')
             except Exception:
                 print(traceback.format_exc())
                 print("")
                 print(f'FAILED: "{output_path}"')
+                max_audio_length = audio_length
 
 def natural_sort(l): 
     convert = lambda text: int(text) if text.isdigit() else text.lower()
@@ -107,6 +112,9 @@ if __name__ == "__main__":
     parser.add_argument("--enabled-models", type=str, default="mt3,pt",
         help="Models used for transcription [mt3,pt] (comma separed)")
 
+    parser.add_argument("--max-audio-length", type=float, default=None,
+        help="Maximal audio length")
+
     args = parser.parse_args()
 
     input_files = []
@@ -119,4 +127,5 @@ if __name__ == "__main__":
         overwrite = args.overwrite, 
         remove_vocals = not args.disable_vocal_removal,
         model_path = args.model_path, 
-        enabled_models = [s.strip() for s in args.enabled_models.split(",")])
+        enabled_models = [s.strip() for s in args.enabled_models.split(",")],
+        max_audio_length = args.max_audio_length)

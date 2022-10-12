@@ -48,7 +48,7 @@ def run_inference(audio_path_list, output_directory,
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
 
-        removed_vocals_path = f"{output_path}.mp3"
+        removed_vocals_path = f"{output_path}.wav"
         midi_path_mt3 = f"{output_path}.mt3.mid"
         midi_path_pt = f"{output_path}.pt.mid"
 

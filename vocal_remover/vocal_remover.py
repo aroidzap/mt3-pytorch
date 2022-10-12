@@ -49,7 +49,11 @@ class VocalRemover:
 
         if save_output_path is not None:
             voc_wave = spec_utils.spectrogram_to_wave(v_spec, hop_length=self.hop_length)
-            sf.write("{}.instr{}".format(*os.path.splitext(save_output_path)), wave.T, self.sr)
-            sf.write("{}.voc{}".format(*os.path.splitext(save_output_path)), voc_wave.T, self.sr)
+            instr_path = "{}.instr{}".format(*os.path.splitext(save_output_path))
+            sf.write(instr_path, wave.T, self.sr)
+            print(f'SAVED: "{instr_path}"')
+            voc_path = "{}.voc{}".format(*os.path.splitext(save_output_path))
+            sf.write(voc_path, voc_wave.T, self.sr)
+            print(f'SAVED: "{voc_path}"')
 
         return wave, self.sr

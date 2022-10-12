@@ -6,6 +6,9 @@ import re
 import librosa
 import traceback
 
+import tensorflow as tf
+tf.config.set_visible_devices([], 'GPU')
+
 from inference import InferenceHandler
 from vocal_remover import VocalRemover
 from piano_transcription_inference.piano_transcription_inference import PianoTranscription 

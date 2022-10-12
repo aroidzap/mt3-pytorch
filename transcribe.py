@@ -52,7 +52,7 @@ def run_inference(audio_path_list, output_directory,
         midi_path_mt3 = f"{output_path}.mt3.mid"
         midi_path_pt = f"{output_path}.pt.mid"
 
-        if (not overwrite 
+        if (not overwrite and not save_removed_vocals
             and ("mt3" not in enabled_models or os.path.exists(midi_path_mt3)) 
             and ("pt" not in enabled_models or os.path.exists(midi_path_pt))
         ):
@@ -76,10 +76,14 @@ def run_inference(audio_path_list, output_directory,
                         print(f'TRANSCRIBING (mt3): "{audio_path}"')
                         mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
                         print(f'SAVED: "{midi_path_mt3}"')
+                    elif "mt3" in enabled_models:
+                        print(f'SKIPPING: "{midi_path_mt3}"')
                     if ("pt" in enabled_models and not os.path.exists(midi_path_pt)):
                         print(f'TRANSCRIBING (pt): "{audio_path}"')
                         pt.inference(audio, audio_sr, audio_path, outpath=midi_path_pt)
                         print(f'SAVED: "{midi_path_pt}"')
+                    elif "pt" in enabled_models:
+                        print(f'SKIPPING: "{midi_path_pt}"')
             except Exception:
                 print(traceback.format_exc())
                 print("")

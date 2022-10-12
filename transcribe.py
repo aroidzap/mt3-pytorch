@@ -28,10 +28,10 @@ class PianoTranscriptionInferenceHandler:
 
 def run_inference(audio_path_list, output_directory, 
     overwrite, save_removed_vocals, remove_vocals, 
-    model_path, enabled_models, max_audio_length):
+    model_path, enabled_models, max_audio_length, mt3_cpu_only):
 
     if "mt3" in enabled_models:
-        mt3 = InferenceHandler(model_path)
+        mt3 = InferenceHandler(model_path, mt3_cpu_only)
     if "pt" in enabled_models:
         pt = PianoTranscriptionInferenceHandler(model_path)
     voc_rem = None
@@ -125,6 +125,9 @@ if __name__ == "__main__":
     parser.add_argument("--max-audio-length", type=float, default=None,
         help="Maximal audio length")
 
+    parser.add_argument("--mt3-cpu-only", action='store_true',
+        help="Run MT3 on CPU only")
+
     args = parser.parse_args()
 
     input_files = []
@@ -138,4 +141,5 @@ if __name__ == "__main__":
         remove_vocals = not args.disable_vocal_removal,
         model_path = args.model_path, 
         enabled_models = [s.strip() for s in args.enabled_models.split(",")],
-        max_audio_length = args.max_audio_length)
+        max_audio_length = args.max_audio_length,
+        mt3_cpu_only = args.mt3_cpu_only)

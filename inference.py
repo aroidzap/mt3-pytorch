@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 from tqdm import tqdm
+import tensorflow as tf
 from models.t5 import T5ForConditionalGeneration, T5Config
 import torch.nn as nn
 import torch
@@ -15,7 +16,9 @@ import note_seq
 
 class InferenceHandler:
 
-    def __init__(self, weight_path, device=torch.device('cuda')) -> None:
+    def __init__(self, weight_path, cpu_only = False) -> None:
+        if cpu_only:
+            tf.config.set_visible_devices([], 'GPU')
         config_path = f'{weight_path}/config.json'
         weight_path = f'{weight_path}/mt3.pth'
         with open(config_path) as f:
@@ -30,7 +33,10 @@ class InferenceHandler:
         self.codec = vocabularies.build_codec(vocab_config=vocabularies.VocabularyConfig(
             num_velocity_bins=1))
         self.vocab = vocabularies.vocabulary_from_codec(self.codec)
-        self.device = device
+        if cpu_only:
+            self.device=torch.device('cpu')
+        else:
+            self.device=torch.device('cuda')
         self.model = model
         self.model.to(self.device)
 

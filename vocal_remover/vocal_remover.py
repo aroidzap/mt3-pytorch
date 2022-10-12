@@ -2,6 +2,7 @@ import os
 import librosa
 import numpy as np
 import torch
+import soundfile as sf
 
 from .lib import nets
 from .lib import spec_utils
@@ -28,7 +29,7 @@ class VocalRemover:
             self.device = torch.device('cuda')
             self.model.to(self.device)
 
-    def predict(self, audio, audio_sr):
+    def predict(self, audio, audio_sr, save_output_path = None):
         X = librosa.resample(audio, orig_sr=audio_sr, target_sr=self.sr)
 
         if X.ndim == 1:
@@ -45,5 +46,10 @@ class VocalRemover:
             y_spec, v_spec = sp.separate(X_spec)
 
         wave = spec_utils.spectrogram_to_wave(y_spec, hop_length=self.hop_length)
+
+        if save_output_path is not None:
+            voc_wave = spec_utils.spectrogram_to_wave(v_spec, hop_length=self.hop_length)
+            sf.write("{}.instr{}".format(*os.path.splitext(save_output_path)), wave.T, self.sr)
+            sf.write("{}.voc{}".format(*os.path.splitext(save_output_path)), voc_wave.T, self.sr)
 
         return wave, self.sr

@@ -27,7 +27,8 @@ class PianoTranscriptionInferenceHandler:
         self.transcriptor.transcribe(audio, outpath)
 
 def run_inference(audio_path_list, output_directory, 
-    overwrite, remove_vocals, model_path, enabled_models, max_audio_length):
+    overwrite, save_removed_vocals, remove_vocals, 
+    model_path, enabled_models, max_audio_length):
 
     if "mt3" in enabled_models:
         mt3 = InferenceHandler(model_path)
@@ -47,6 +48,7 @@ def run_inference(audio_path_list, output_directory,
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
 
+        removed_vocals_path = f"{output_path}.mp3"
         midi_path_mt3 = f"{output_path}.mt3.mid"
         midi_path_pt = f"{output_path}.pt.mid"
 
@@ -68,7 +70,8 @@ def run_inference(audio_path_list, output_directory,
                     audio, audio_sr = librosa.load(audio_path)
                     if (remove_vocals):
                         print(f'PREPROCESSING (removing vocals): "{audio_path}"')
-                        audio, audio_sr = voc_rem.predict(audio, audio_sr)
+                        audio, audio_sr = voc_rem.predict(audio, audio_sr, 
+                            removed_vocals_path if save_removed_vocals else None)
                     if ("mt3" in enabled_models and not os.path.exists(midi_path_mt3)):
                         print(f'TRANSCRIBING (mt3): "{audio_path}"')
                         mt3.inference(audio, audio_sr, audio_path, outpath=midi_path_mt3)
@@ -103,6 +106,9 @@ if __name__ == "__main__":
     parser.add_argument("--overwrite", action="store_true",
         help="Overwrite output files")
 
+    parser.add_argument("--save-vocal-removal", action="store_true",
+        help="Saves output of vocal removal preprocessing step")
+
     parser.add_argument("--disable-vocal-removal", action='store_true',
         help="Disable vocal removal preprocessing step")
         
@@ -124,7 +130,7 @@ if __name__ == "__main__":
     input_files = natural_sort(input_files)
 
     run_inference(input_files, args.output_folder, 
-        overwrite = args.overwrite, 
+        overwrite = args.overwrite, save_removed_vocals=args.save_vocal_removal,
         remove_vocals = not args.disable_vocal_removal,
         model_path = args.model_path, 
         enabled_models = [s.strip() for s in args.enabled_models.split(",")],

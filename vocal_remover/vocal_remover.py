@@ -12,7 +12,7 @@ from .inference import Separator
 class VocalRemover:
     def __init__(self, pretrained_model = 'models/baseline.pth', 
             sr = 44100, n_fft = 2048, hop_length = 1024, batchsize = 4, 
-            cropsize = 256, tta = False, postprocess = True):
+            cropsize = 256, tta = False, postprocess = True, device = torch.device('cuda')):
 
         self.sr = sr
         self.n_fft = n_fft
@@ -22,12 +22,10 @@ class VocalRemover:
         self.tta = tta
         self.postprocess = postprocess
 
-        self.device = torch.device('cpu')
+        self.device = device
         self.model = nets.CascadedNet(self.n_fft, 32, 128)
         self.model.load_state_dict(torch.load(pretrained_model, map_location=self.device))
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-            self.model.to(self.device)
+        self.model.to(self.device)
 
     def predict(self, audio, audio_sr, save_output_path = None):
         X = librosa.resample(audio, orig_sr=audio_sr, target_sr=self.sr)

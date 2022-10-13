@@ -5,7 +5,7 @@ import warnings
 import re
 import librosa
 import traceback
-
+import torch
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
@@ -18,9 +18,10 @@ warnings.filterwarnings('ignore', message='PySoundFile failed')
 warnings.filterwarnings('ignore', message='will be removed in v5 of Transformers')
 
 class PianoTranscriptionInferenceHandler:
-    def __init__(self, model_path):
+    def __init__(self, model_path, device=torch.device('cuda')):
         self.transcriptor = PianoTranscription(checkpoint_path=
-            os.path.join(model_path, "note_F1=0.9677_pedal_F1=0.9186.pth"))
+            os.path.join(model_path, "note_F1=0.9677_pedal_F1=0.9186.pth"),
+            device=device)
 
     def inference(self, input_audio, audio_sr, audio_path, outpath=None):
         audio = librosa.to_mono(librosa.resample(input_audio, orig_sr=audio_sr, target_sr=pt_sr))
@@ -31,15 +32,17 @@ class PianoTranscriptionInferenceHandler:
 
 def run_inference(audio_path_list, output_directory, 
     overwrite, save_removed_vocals, remove_vocals, 
-    model_path, enabled_models, max_audio_length):
+    model_path, enabled_models, max_audio_length, cpu_only):
+
+    device = torch.device('cpu') if cpu_only else torch.device('cuda')
 
     if "mt3" in enabled_models:
-        mt3 = InferenceHandler(model_path)
+        mt3 = InferenceHandler(model_path, device = device)
     if "pt" in enabled_models:
-        pt = PianoTranscriptionInferenceHandler(model_path)
+        pt = PianoTranscriptionInferenceHandler(model_path, device = device)
     voc_rem = None
     if (remove_vocals):
-        voc_rem = VocalRemover("vocal_remover/models/baseline.pth")
+        voc_rem = VocalRemover("vocal_remover/models/baseline.pth", device = device)
 
     common_path = os.path.commonprefix(audio_path_list)
     if ((not os.path.exists(common_path)) or (not os.path.isdir(common_path))):
@@ -128,6 +131,9 @@ if __name__ == "__main__":
     parser.add_argument("--max-audio-length", type=float, default=None,
         help="Maximal audio length")
 
+    parser.add_argument("--cpu-only", action='store_true',
+        help="Run on CPU only")
+
     args = parser.parse_args()
 
     input_files = []
@@ -141,4 +147,5 @@ if __name__ == "__main__":
         remove_vocals = not args.disable_vocal_removal,
         model_path = args.model_path, 
         enabled_models = [s.strip() for s in args.enabled_models.split(",")],
-        max_audio_length = args.max_audio_length)
+        max_audio_length = args.max_audio_length,
+        cpu_only = args.cpu_only)
